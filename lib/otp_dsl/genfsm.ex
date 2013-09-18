@@ -41,7 +41,10 @@ defmodule OtpDsl.Genfsm do
                        cpattern,
                        wclause ]
                        } ] ->
-                   {params, cpattern, wclause }
+          {params, cpattern, wclause }
+          [ {:when, _, [ {k, v},
+                         wclause ] } ] ->
+          {[k, v], nil, wclause}
       [ {k, v} ]                -> {[k, v], nil, nil}
     end
 
@@ -58,11 +61,21 @@ defmodule OtpDsl.Genfsm do
           end
         end
       _ ->
-        quote hygiene: [vars: false ] do
-          def unquote(state)(unquote(params), context=unquote(context_pattern))
-          when unquote(when_clause) do
-            unquote(action)
-          end
+        case context_pattern do
+          nil ->
+            quote hygiene: [vars: false ] do
+              def unquote(state)(unquote(params), context)
+              when unquote(when_clause) do
+                unquote(action)
+              end
+            end
+          _ ->  
+            quote hygiene: [vars: false ] do
+              def unquote(state)(unquote(params), context=unquote(context_pattern))
+              when unquote(when_clause) do
+                unquote(action)
+              end
+            end
         end
     end
     
