@@ -33,9 +33,16 @@ defmodule OtpDsl.Genfsm do
   end
 
   def generate_state(state, {match, _line, action}) when is_list(match) do
-    params = case match do
-      [ {:{}, _line, params } ] -> params
-      [ {k, v} ]                -> [k, v]
+    {params, context_pattern, when_clause} =
+      case match do
+        [ {:{}, _, params } ] -> {params, nil, nil}
+
+        [ {:when, _, [ {:{}, _, params },
+                       cpattern,
+                       wclause ]
+                       } ] ->
+                   {params, cpattern, wclause }
+      [ {k, v} ]                -> {[k, v], nil, nil}
     end
 
     params = case length(params) do
@@ -43,11 +50,22 @@ defmodule OtpDsl.Genfsm do
       _ -> quote do { unquote_splicing(params)} end
     end
 
-    quote hygiene: [vars: false ] do
-      def unquote(state)(unquote(params), context) do
-        unquote(action)
-      end
+    case when_clause do
+      nil ->  
+        quote hygiene: [vars: false ] do
+          def unquote(state)(unquote(params), context) do
+            unquote(action)
+          end
+        end
+      _ ->
+        quote hygiene: [vars: false ] do
+          def unquote(state)(unquote(params), context=unquote(context_pattern))
+          when unquote(when_clause) do
+            unquote(action)
+          end
+        end
     end
+    
   end
 
   def next_state(new_state, context) do
